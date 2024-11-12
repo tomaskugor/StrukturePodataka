@@ -1,12 +1,15 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #define MAX_LINE 100
 
 typedef struct number {
     int coeff;
     int exp;
-    struct number *next;
-}Number;
+    struct number* next;
+} Number;
 
 void DeleteAfter(Number*);
 void Print(Number*);
@@ -14,8 +17,7 @@ Number* InsertSorted(Number*, Number*);
 Number* Add(Number*, Number*);
 Number* Multiply(Number*, Number*);
 
-void DeleteAfter(Number* node)
-{
+void DeleteAfter(Number* node) {
     if (node == NULL || node->next == NULL) return;
 
     Number* temp = node->next;
@@ -29,30 +31,30 @@ void Print(Number* head) {
         printf("%dx^%d", temp->coeff, temp->exp);
         temp = temp->next;
         if (temp != NULL)
-            printf("+");
+            printf(" + ");
     }
+    printf("\n");
 }
 
 Number* InsertSorted(Number* head, Number* nE) {
-    Number* temp = head;
-    
     if (head == NULL) {
         return nE;
     }
 
-    while ((temp->next != NULL) && (temp->next->exp < nE->exp)) {
+    Number* temp = head;
+    while (temp->next != NULL && temp->next->exp < nE->exp) {
         temp = temp->next;
     }
 
-    if ((temp->next == NULL) || (temp->next->exp != nE->exp)) {
-        nE->next = temp->next;  
-        temp->next = nE;        
+    if (temp->next == NULL || temp->next->exp != nE->exp) {
+        nE->next = temp->next;
+        temp->next = nE;
     }
     else {
         int resultCoeff = temp->next->coeff + nE->coeff;
         if (resultCoeff == 0) {
             DeleteAfter(temp);
-            free(nE);      
+            free(nE);
         }
         else {
             temp->next->coeff = resultCoeff;
@@ -63,29 +65,26 @@ Number* InsertSorted(Number* head, Number* nE) {
 }
 
 Number* Add(Number* poly1, Number* poly2) {
-    
     Number* result = NULL;
-    
+
     while (poly1 != NULL) {
         Number* newEl1 = (Number*)malloc(sizeof(Number));
         newEl1->coeff = poly1->coeff;
         newEl1->exp = poly1->exp;
         newEl1->next = NULL;
-
         result = InsertSorted(result, newEl1);
         poly1 = poly1->next;
     }
-    
+
     while (poly2 != NULL) {
         Number* newEl2 = (Number*)malloc(sizeof(Number));
         newEl2->coeff = poly2->coeff;
         newEl2->exp = poly2->exp;
         newEl2->next = NULL;
-        
         result = InsertSorted(result, newEl2);
         poly2 = poly2->next;
     }
-    
+
     return result;
 }
 
@@ -98,87 +97,73 @@ Number* Multiply(Number* poly1, Number* poly2) {
             newEl->coeff = temp1->coeff * temp2->coeff;
             newEl->exp = temp1->exp + temp2->exp;
             newEl->next = NULL;
-
             result = InsertSorted(result, newEl);
         }
     }
-
     return result;
 }
 
-
-
-int main()
-{
+int main() {
     Number* poly1 = NULL;
     Number* poly2 = NULL;
-    int numBytes;
-    
+
     FILE* file = fopen("polinomi.txt", "r");
     if (!file) {
-        printf("Greska!\n");
+        printf("Error opening file!\n");
         return -1;
     }
 
-    int coeff, exp;
+    int coeff, exp, numBytes;
     char buffer[MAX_LINE];
-    
-    printf("Prvi polinom:\n");
-    while (fgets(buffer, MAX_LINE, file)) {
 
+    while (fgets(buffer, MAX_LINE, file)) {
         if (strlen(buffer) == 1 && buffer[0] == '\n') {
-            break;  
+            break;
         }
-        
-        int status = sscanf(buffer, "%d %d %n", &coeff, &exp, &numBytes);
-        
-        if (status == 2) {
-            buffer += numBytes; 
-            
+
+        char* ptr = buffer;
+        while (sscanf(ptr, "%d %d%n", &coeff, &exp, &numBytes) == 2) {
+            ptr += numBytes;
+
             Number* newEl = (Number*)malloc(sizeof(Number));
             newEl->coeff = coeff;
             newEl->exp = exp;
             newEl->next = NULL;
-
             poly1 = InsertSorted(poly1, newEl);
-        } else {
-            printf("Greska!");
         }
     }
-    
-   printf("Drugi polinom:\n");
-    while (fgets(buffer, MAX_LINE, file)) {
-        int status = sscanf(buffer, "%d %d %n", &coeff, &exp, &numBytes);
 
-        if (status == 2) {
-            buffer += numBytes; 
-            
+    while (fgets(buffer, MAX_LINE, file)) {
+        if (strlen(buffer) == 1 && buffer[0] == '\n') {
+            break;
+        }
+
+        char* ptr = buffer;
+        while (sscanf(ptr, "%d %d%n", &coeff, &exp, &numBytes) == 2) {
+            ptr += numBytes;
+
             Number* newEl = (Number*)malloc(sizeof(Number));
             newEl->coeff = coeff;
             newEl->exp = exp;
             newEl->next = NULL;
-
             poly2 = InsertSorted(poly2, newEl);
-        } else {
-            printf("Greska!");
         }
     }
 
-    
-    fclose(file); 
-    
+    fclose(file);
+
     printf("Prvi polinom: ");
     Print(poly1);
     printf("Drugi polinom: ");
     Print(poly2);
-    
+
     Number* sum = Add(poly1, poly2);
     printf("Zbroj polinoma: ");
     Print(sum);
-    
-    Number* umn = Multiply(poly1, poly2);
+
+    Number* product = Multiply(poly1, poly2);
     printf("Umnozak polinoma: ");
-    Print(umn);
+    Print(product);
 
     Number* current;
     while (poly1 != NULL) {
@@ -196,11 +181,11 @@ int main()
         sum = sum->next;
         free(current);
     }
-    while (umn != NULL) {
-    current = umn;
-    umn = umn->next;
-    free(current);
-    }  
+    while (product != NULL) {
+        current = product;
+        product = product->next;
+        free(current);
+    }
 
     return 0;
 }
