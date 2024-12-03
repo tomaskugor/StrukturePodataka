@@ -1,0 +1,18 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+triba ti jos jedna struktura ovdi typedef struct... Article;
+
+struct _receipt;
+typedef struct _receipt* ReceiptPosition;
+typedef struct _receipt
+{
+	char receiptDate[DATE_LENGTH];
+	ReceiptPosition next;
+	Article articleHead;
+}Receipt;
+
+int readAndFillReceipts(ReceiptPosition receiptHead);
+ReceiptPosition createNewReceiptFromBuffer(char* buffer);
