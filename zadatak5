@@ -1,0 +1,139 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+
+typedef struct postfiks {
+    double number;
+    struct postfiks* next;
+} Postfiks;
+
+double postfiks(char* expression);
+void push(Postfiks** top, double number);
+double pop(Postfiks** top);
+int isOperator(char ch);
+
+int isOperator(char ch) {
+    return ch == '+' || ch == '-' || ch == '*' || ch == '/';
+}
+
+void push(Postfiks** top, double number) {
+    Postfiks* newNode = (Postfiks*)malloc(sizeof(Postfiks));
+    if (!newNode) {
+        printf("Greska! Nema dovoljno memorije.\n");
+        exit(1);
+    }
+    newNode->number = number;
+    newNode->next = *top;
+    *top = newNode; 
+}
+
+double pop(Postfiks** top) {
+    if (*top == NULL) {
+        printf("Greska! Stog je prazan.\n");
+        exit(1);
+    }
+    Postfiks* temp = *top;
+    double number = temp->number;  
+    *top = temp->next;
+    free(temp);
+    return number;  
+}
+
+double postfiks(char* expression) {
+    Postfiks* stack = NULL; 
+
+    double num = 0;
+    int i = 0;
+
+    while (expression[i] != '\0') {
+        if (expression[i] == ' ') {
+            i++;
+            continue;
+        }
+
+        if (isdigit(expression[i]) || expression[i] == '.') {
+            num = 0;
+            int decimalPoint = 0;
+            double decimalFactor = 1;
+
+            while (isdigit(expression[i]) || expression[i] == '.') {
+                if (expression[i] == '.') {
+                    decimalPoint = 1;
+                }
+                else {
+                    if (decimalPoint) {
+                        decimalFactor /= 10; 
+                        num += (expression[i] - '0') * decimalFactor;
+                    }
+                    else {
+                        num = num * 10 + (expression[i] - '0');
+                    }
+                }
+                i++;
+            }
+
+            push(&stack, num);
+        }
+        else if (isOperator(expression[i])) {
+
+            double a = pop(&stack); 
+            double b = pop(&stack); 
+
+            switch (expression[i]) {
+            case '+':
+                push(&stack, b + a); 
+                break;
+            case '-':
+                push(&stack, b - a);  
+                break;
+            case '*':
+                push(&stack, b * a); 
+                break;
+            case '/':
+                if (a == 0) {
+                    printf("Greska! Dijeljenje s nulom.\n");
+                    exit(1);
+                }
+                push(&stack, b / a);  
+                break;
+            }
+            i++;  
+        }
+        else {
+            printf("Greska! Nevaljani znak u izrazu.\n");
+            exit(1);
+        }
+    }
+
+    double result = pop(&stack); 
+    if (stack != NULL) {
+        printf("Greska! Postfiksni izraz nije ispravan.\n");
+        exit(1);  
+    }
+    return result; 
+}
+
+int main() {
+    FILE* file = fopen("postfiks.txt", "r");
+    if (file == NULL) {
+        printf("Greska! Nije moguce otvoriti datoteku.\n");
+        return -1;
+    }
+
+    char expression[100];
+
+    if (fgets(expression, sizeof(expression), file) == NULL) {
+        printf("Greska! Nije moguce ucitati datoteku.\n");
+        fclose(file);
+        return -1;
+    }
+
+    double result = postfiks(expression);
+
+    printf("Rezultat: %.2f\n", result);
+
+    fclose(file);
+    return 0;
+}
