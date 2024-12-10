@@ -1,18 +1,218 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
+#define DATE_LENGTH 11
 
-triba ti jos jedna struktura ovdi typedef struct... Article;
+typedef struct article {
+    char item[50];
+    int amount;
+    double price;
+    struct article* next;
+} Article;
 
-struct _receipt;
-typedef struct _receipt* ReceiptPosition;
-typedef struct _receipt
+typedef struct receipt {
+    char date[DATE_LENGTH];
+    Article* articles;
+    struct receipt* next;
+} Receipt;
+
+int readAndFillReceipts(Receipt* receiptHead);
+Article* insertSortedArticle(Article* head, Article* new_item);
+Receipt* insertSorted(Receipt* head, Receipt* new_receipt); // Define this
+Receipt* createNewReceiptFromBuffer(FILE* receiptFile);
+void inTotal(Receipt* receipts, const char* item_name, const char* start_date, const char* end_date);
+int is_date_in_range(const char* date, const char* start_date, const char* end_date);
+void freeArticles(Article* head);
+void freeReceipts(Receipt* head);
+
+int is_date_in_range(const char* date, const char* start_date, const char* end_date) {
+    return strcmp(date, start_date) >= 0 && strcmp(date, end_date) <= 0;
+}
+
+int readAndFillReceipts(Receipt** receiptHead)
 {
-	char receiptDate[DATE_LENGTH];
-	ReceiptPosition next;
-	Article articleHead;
-}Receipt;
+    FILE* file = fopen("racuni.txt", "r");
 
-int readAndFillReceipts(ReceiptPosition receiptHead);
-ReceiptPosition createNewReceiptFromBuffer(char* buffer);
+    if (!file) {
+        printf("Greska u otvaranju datoteke!\n");
+        return -1;
+    }
+
+    char filename[100];
+
+    while (fscanf(file, "%100s", filename) == 1) {
+        filename[strcspn(filename, "\n")] = '\0';
+        FILE* receiptFile = fopen(filename, "r");
+        if (!receiptFile) {
+            printf("Greska u otvaranju datoteke: %s\n", filename);
+            continue;
+        }
+        char buffer[100];
+        if (!fgets(buffer, sizeof(buffer), receiptFile)) {
+            printf("Greska u citanju datuma iz datoteke: %s\n", filename);
+            fclose(receiptFile);
+            continue;
+        }
+
+        Receipt* newReceipt = createNewReceiptFromBuffer(receiptFile);
+        if (!newReceipt) {
+            printf("Greska u stvaranju novog racuna iz datoteke: %s\n", filename);
+            fclose(receiptFile);
+            continue;
+        }
+        *receiptHead = insertSorted(*receiptHead, newReceipt);
+        fclose(receiptFile);
+    }
+
+    fclose(file);
+
+    return 0;
+}
+
+Receipt* insertSorted(Receipt* head, Receipt* new_receipt) {
+    if (!head || strcmp(new_receipt->date, head->date) < 0) {
+        new_receipt->next = head;
+        return new_receipt;
+    }
+
+    Receipt* current = head;
+    while (current->next && strcmp(current->next->date, new_receipt->date) < 0) {
+        current = current->next;
+    }
+
+    new_receipt->next = current->next;
+    current->next = new_receipt;
+    return head;
+}
+
+Article* insertSortedArticle(Article* head, Article* new_item) {
+    if (!head || strcmp(new_item->item, head->item) < 0) {
+        new_item->next = head;
+        return new_item;
+    }
+
+    Article* current = head;
+    while (current->next && strcmp(current->next->item, new_item->item) < 0) {
+        current = current->next;
+    }
+
+    new_item->next = current->next;
+    current->next = new_item;
+
+    return head;
+}
+
+Receipt* createNewReceiptFromBuffer(FILE* receiptFile)
+{
+    Receipt* newReceipt = (Receipt*)malloc(sizeof(Receipt));
+    if (!newReceipt) {
+        printf("Greska u alokaciji memorije!\n");
+        return NULL;
+    }
+    if (!fgets(newReceipt->date, sizeof(newReceipt->date), receiptFile)) {
+        free(newReceipt);
+        return NULL;
+    }
+    newReceipt->date[strcspn(newReceipt->date, "\n")] = '\0'; 
+    newReceipt->articles = NULL;
+    newReceipt->next = NULL;
+
+    char buffer[100];
+    while (fgets(buffer, sizeof(buffer), receiptFile)) {
+        Article* newArticle = (Article*)malloc(sizeof(Article));
+        if (!newArticle) {
+            printf("Greska u alokaciji memorije!\n");
+            continue;
+        }
+
+        if (sscanf(buffer, " %49[^,], %d, %lf", newArticle->item, &newArticle->amount, &newArticle->price) != 3) {
+            printf("Greska u izradi racuna!\n");
+            free(newArticle);
+            continue;
+        }
+
+        newArticle->next = NULL;
+        newReceipt->articles = insertSortedArticle(newReceipt->articles, newArticle);
+    }
+
+    return newReceipt;
+}
+
+void inTotal(Receipt* receipts, const char* item_name, const char* start_date, const char* end_date) {
+    double total_spent = 0.0;
+    int total_amount = 0;
+
+    for (Receipt* current = receipts; current != NULL; current = current->next) {
+        if (is_date_in_range(current->date, start_date, end_date)) {
+            for (Article* current_item = current->articles; current_item != NULL; current_item = current_item->next) {
+                if (strcmp(current_item->item, item_name) == 0) {
+                    total_amount += current_item->amount;
+                    total_spent += current_item->amount * current_item->price;
+                }
+            }
+        }
+    }
+
+    printf("Ukupna cijena %s: %.2f\n", item_name, total_spent);
+    printf("Ukupna kolicina: %d\n", total_amount);
+}
+
+void freeArticles(Article* head) {
+    while (head) {
+        Article* temp = head;
+        head = head->next;
+        free(temp);
+    }
+}
+
+void freeReceipts(Receipt* head) {
+    while (head) {
+        freeArticles(head->articles);
+        Receipt* temp = head;
+        head = head->next;
+        free(temp);
+    }
+}
+
+int main() {
+    Receipt* receipts = NULL;
+
+    if (readAndFillReceipts(&receipts) == -1) {
+        printf("Greska u citanju racuna!\n");
+        return -1;
+    }
+
+    char item_name[50], start_date[11], end_date[11];
+    printf("Unesite artikl: ");
+    scanf(" %49[^\n]", item_name);
+
+    if (sscanf(item_name, " %49[^\n]", item_name) != 1) {
+        printf("Greska u unosu artikla.\n");
+        return -1;
+    }
+
+    printf("Unesite pocetni datum (YYYY-MM-DD): ");
+    scanf(" %10s", start_date);
+
+    if (sscanf(start_date, " %10s", start_date) != 1) {
+        printf("Greska u unosu pocetnog datuma.\n");
+        return -1;
+    }
+
+    printf("Unesite krajnji datum (YYYY-MM-DD): ");
+    scanf(" %10s", end_date);
+
+    if (sscanf(end_date, " %10s", end_date) != 1) {
+        printf("Greska u unosu krajnjeg datuma.\n");
+        return -1;
+    }
+
+    inTotal(receipts, item_name, start_date, end_date);
+
+    freeReceipts(receipts);
+    freeArticles(receipts);
+
+    return 0;
+}
