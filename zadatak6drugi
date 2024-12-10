@@ -1,0 +1,159 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct Artikl {
+    char naziv[50];
+    int kolicina;
+    float cijena;
+    struct Artikl* next;
+} Artikl;
+
+typedef struct Racun {
+    char datum[11];
+    Artikl* artikli;
+    struct Racun* next;
+} Racun;
+
+Racun* dodaj_racun(Racun** head, char* datum);
+Artikl* dodaj_artikl(Artikl** head, char* naziv, int kolicina, float cijena);
+void ucitaj_racune(Racun** head, const char* datoteka_racuni);
+void obradi_racun(Racun** head, char* datoteka);
+float pretraga_artikla(Racun* head, char* artikl, char* od, char* do_, int* kolicina);
+void oslobodi_memoriju(Racun* head);
+
+int main() {
+    Racun* racuni = NULL;
+    char naziv_artikla[50], od[11], do_[11];
+    int ukupna_kolicina = 0;
+    float ukupna_cijena = 0;
+
+    ucitaj_racune(&racuni, "racuni.txt");
+
+    printf("Unesite naziv artikla: ");
+    scanf("%s", naziv_artikla);
+    printf("Unesite vremensko razdoblje (YYYY-MM-DD YYYY-MM-DD): ");
+    scanf("%s %s", od, do_);
+
+    ukupna_cijena = pretraga_artikla(racuni, naziv_artikla, od, do_, &ukupna_kolicina);
+
+    printf("Ukupno potroseno na '%s' od %s do %s: %.2f HRK\n", naziv_artikla, od, do_, ukupna_cijena);
+    printf("Ukupno kupljeno: %d\n", ukupna_kolicina);
+
+    oslobodi_memoriju(racuni);
+    return 0;
+}
+
+Racun* dodaj_racun(Racun** head, char* datum) {
+    Racun* novi = (Racun*)malloc(sizeof(Racun));
+    strcpy(novi->datum, datum);
+    novi->artikli = NULL;
+    novi->next = NULL;
+
+    if (*head == NULL || strcmp((*head)->datum, datum) > 0) {
+        novi->next = *head;
+        *head = novi;
+    }
+    else {
+        Racun* temp = *head;
+        while (temp->next != NULL && strcmp(temp->next->datum, datum) < 0) {
+            temp = temp->next;
+        }
+        novi->next = temp->next;
+        temp->next = novi;
+    }
+    return novi;
+}
+
+Artikl* dodaj_artikl(Artikl** head, char* naziv, int kolicina, float cijena) {
+    Artikl* novi = (Artikl*)malloc(sizeof(Artikl));
+    strcpy(novi->naziv, naziv);
+    novi->kolicina = kolicina;
+    novi->cijena = cijena;
+    novi->next = NULL;
+
+    if (*head == NULL || strcmp((*head)->naziv, naziv) > 0) {
+        novi->next = *head;
+        *head = novi;
+    }
+    else {
+        Artikl* temp = *head;
+        while (temp->next != NULL && strcmp(temp->next->naziv, naziv) < 0) {
+            temp = temp->next;
+        }
+        novi->next = temp->next;
+        temp->next = novi;
+    }
+    return novi;
+}
+
+void ucitaj_racune(Racun** head, const char* datoteka_racuni) {
+    FILE* f = fopen(datoteka_racuni, "r");
+    if (!f) {
+        perror("Greska pri otvaranju datoteke racuni.txt");
+        exit(EXIT_FAILURE);
+    }
+
+    char datoteka[50];
+    while (fscanf(f, "%s", datoteka) == 1) {
+        obradi_racun(head, datoteka);
+    }
+    fclose(f);
+}
+
+
+void obradi_racun(Racun** head, char* datoteka) {
+    FILE* f = fopen(datoteka, "r");
+    if (!f) {
+        perror("Greska pri otvaranju racuna");
+        return;
+    }
+
+    char datum[11], naziv[50];
+    int kolicina;
+    float cijena;
+    fscanf(f, "%s", datum);
+
+    Racun* racun = dodaj_racun(head, datum);
+
+    while (fscanf(f, " %49[^,], %d, %f", naziv, &kolicina, &cijena) == 3) {
+        dodaj_artikl(&(racun->artikli), naziv, kolicina, cijena);
+    }
+
+    fclose(f);
+}
+
+float pretraga_artikla(Racun* head, char* artikl, char* od, char* do_, int* kolicina) {
+    float ukupno = 0;
+    *kolicina = 0;
+
+    while (head) {
+        if (strcmp(head->datum, od) >= 0 && strcmp(head->datum, do_) <= 0) {
+            Artikl* temp = head->artikli;
+            while (temp) {
+                if (strcmp(temp->naziv, artikl) == 0) {
+                    ukupno += temp->cijena * temp->kolicina;
+                    *kolicina += temp->kolicina;
+                }
+                temp = temp->next;
+            }
+        }
+        head = head->next;
+    }
+    return ukupno;
+}
+
+void oslobodi_memoriju(Racun* head) {
+    while (head) {
+        Artikl* temp_artikl = head->artikli;
+        while (temp_artikl) {
+            Artikl* za_brisanje = temp_artikl;
+            temp_artikl = temp_artikl->next;
+            free(za_brisanje);
+        }
+        Racun* za_brisanje = head;
+        head = head->next;
+        free(za_brisanje);
+    }
+}
