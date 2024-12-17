@@ -1,0 +1,138 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_NAME 100
+
+typedef struct Directory {
+    char name[MAX_NAME];
+    struct Directory* parent;
+    struct Directory* child;
+    struct Directory* sibling;
+} Directory;
+
+Directory* createDirectory(const char* name, Directory* parent) {
+    Directory* newDir = (Directory*)malloc(sizeof(Directory));
+    strcpy(newDir->name, name);
+    newDir->parent = parent;
+    newDir->child = NULL;
+    newDir->sibling = NULL;
+    return newDir;
+}
+
+void addDirectory(Directory* current, const char* name) {
+    Directory* newDir = createDirectory(name, current);
+    if (current->child == NULL) {
+        current->child = newDir;
+    }
+    else {
+        Directory* temp = current->child;
+        while (temp->sibling != NULL) {
+            temp = temp->sibling;
+        }
+        temp->sibling = newDir;
+    }
+}
+
+void listDirectories(Directory* current) {
+    if (current->child == NULL) {
+        printf("Direktorij je prazan.\n");
+        return;
+    }
+    Directory* temp = current->child;
+    while (temp != NULL) {
+        printf("%s\n", temp->name);
+        temp = temp->sibling;
+    }
+}
+
+Directory* changeDirectory(Directory* current, const char* name) {
+    if (current->child == NULL) {
+        printf("Nema poddirektorija.\n");
+        return current;
+    }
+    Directory* temp = current->child;
+    while (temp != NULL) {
+        if (strcmp(temp->name, name) == 0) {
+            return temp;
+        }
+        temp = temp->sibling;
+    }
+    printf("Direktorij '%s' nije pronaden.\n", name);
+    return current;
+}
+
+Directory* moveToParent(Directory* current) {
+    if (current->parent != NULL) {
+        return current->parent;
+    }
+    else {
+        printf("Vec ste u korijenskom direktoriju.\n");
+        return current;
+    }
+}
+
+void freeDirectories(Directory* current) {
+    if (current == NULL) return;
+    freeDirectories(current->child);
+    freeDirectories(current->sibling);
+    free(current);
+}
+
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+int main() {
+    Directory* root = createDirectory("root", NULL);
+    Directory* current = root;
+    int choice;
+    char name[MAX_NAME];
+
+    while (1) {
+        printf("\nTrenutni direktorij: %s\n", current->name);
+        printf("1. md (napravi direktorij)\n");
+        printf("2. cd dir (promjena direktorija)\n");
+        printf("3. cd.. (povratak u prethodni direktorij)\n");
+        printf("4. dir (prikaz sadrzaja)\n");
+        printf("5. izlaz\n");
+        printf("Izbor: ");
+        if (scanf("%d", &choice) != 1) {
+            printf("Greska\n");
+            clearInputBuffer();
+            continue;
+        }
+        clearInputBuffer(); 
+
+        switch (choice) {
+        case 1:
+            printf("Unesite ime novog direktorija: ");
+            scanf("%s", name);
+            clearInputBuffer(); 
+            addDirectory(current, name);
+            break;
+        case 2:
+            printf("Unesite ime direktorija: ");
+            scanf("%s", name);
+            clearInputBuffer();
+            current = changeDirectory(current, name);
+            break;
+        case 3:
+            current = moveToParent(current);
+            break;
+        case 4:
+            printf("Sadrzaj direktorija '%s':\n", current->name);
+            listDirectories(current);
+            break;
+        case 5:
+            freeDirectories(root);
+            return 0;
+        default:
+            printf("Greska!\n");
+            break;
+        }
+    }
+
+    return 0;
