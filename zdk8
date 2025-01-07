@@ -1,0 +1,177 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Node {
+    int number;
+    struct Node* left;
+    struct Node* right;
+} Node;
+
+Node* createNode(int number) {
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    if (!newNode) { 
+        printf("Greska u alokaciji memorije.\n");
+        exit(1); 
+    }
+    newNode->number = number;
+    newNode->left = NULL;
+    newNode->right = NULL;
+    return newNode;
+}
+
+Node* insert(Node* root, int number) {
+    if (root == NULL) {
+        return createNode(number);
+    }
+    if (number < root->number) {
+        root->left = insert(root->left, number);
+    }
+    else if (number > root->number) {
+        root->right = insert(root->right, number);
+    }
+    return root;
+}
+
+Node* search(Node* root, int el) {
+    if (root == NULL || root->number == el) {
+        return root;
+    }
+    if (el < root->number) {
+        return search(root->left, el);
+    }
+    return search(root->right, el);
+}
+
+void inorder(Node* root) {
+    if (root != NULL) {
+        inorder(root->left);
+        printf("%d ", root->number);
+        inorder(root->right);
+    }
+}
+
+void preorder(Node* root) {
+    if (root != NULL) {
+        printf("%d ", root->number);
+        preorder(root->left);
+        preorder(root->right);
+    }
+}
+
+void postorder(Node* root) {
+    if (root != NULL) {
+        postorder(root->left);
+        postorder(root->right);
+        printf("%d ", root->number);
+    }
+}
+
+void levelOrder(Node* root) {
+    if (root == NULL) return;
+    Node* queue[100];
+    int front = 0, rear = 0;
+
+    queue[rear++] = root;
+    while (front < rear) {
+        Node* current = queue[front++];
+        printf("%d ", current->number);
+        if (current->left) queue[rear++] = current->left;
+        if (current->right) queue[rear++] = current->right;
+    }
+}
+
+Node* findMin(Node* root) {
+    while (root->left != NULL) {
+        root = root->left;
+    }
+    return root;
+}
+
+Node* deleteNode(Node* root, int el) {
+    if (root == NULL) return root;
+    if (el < root->number) {
+        root->left = deleteNode(root->left, el);
+    }
+    else if (el > root->number) {
+        root->right = deleteNode(root->right, el);
+    }
+    else {
+        if (root->left == NULL) {
+            Node* temp = root->right;
+            free(root);
+            return temp;
+        }
+        else if (root->right == NULL) {
+            Node* temp = root->left;
+            free(root);
+            return temp;
+        }
+
+        Node* temp = findMin(root->right);
+        root->number = temp->number;
+        root->right = deleteNode(root->right, temp->number);
+    }
+    return root;
+}
+
+int main() {
+    Node* root = NULL;
+    int choice, value;
+
+    do {
+        printf("\n1. Dodaj element\n2. Pronadi element\n3. Inorder ispis\n4. Preorder ispis\n5. Postorder ispis\n6. Level order ispis\n7. Obrisi element\n0. Izlaz\n");
+        printf("Unesite izbor: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+        case 1:
+            printf("Unesite vrijednost: ");
+            scanf("%d", &value);
+            root = insert(root, value);
+            break;
+        case 2:
+            printf("Unesite vrijednost za pretragu: ");
+            scanf("%d", &value);
+            if (search(root, value)) {
+                printf("Element %d je pronaden.\n", value);
+            }
+            else {
+                printf("Element %d nije pronaden.\n", value);
+            }
+            break;
+        case 3:
+            printf("Inorder ispis: ");
+            inorder(root);
+            printf("\n");
+            break;
+        case 4:
+            printf("Preorder ispis: ");
+            preorder(root);
+            printf("\n");
+            break;
+        case 5:
+            printf("Postorder ispis: ");
+            postorder(root);
+            printf("\n");
+            break;
+        case 6:
+            printf("Level order ispis: ");
+            levelOrder(root);
+            printf("\n");
+            break;
+        case 7:
+            printf("Unesite vrijednost za brisanje: ");
+            scanf("%d", &value);
+            root = deleteNode(root, value);
+            break;
+        case 0:
+            printf("Izlaz.\n");
+            break;
+        default:
+            printf("Greska.\n");
+        }
+    } while (choice != 0);
+
+    return 0;
+}
