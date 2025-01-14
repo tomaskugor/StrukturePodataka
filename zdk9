@@ -1,0 +1,105 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+typedef struct Node {
+    int number;
+    struct Node* left;
+    struct Node* right;
+} Node;
+
+void inorder(Node* root, FILE* file);
+Node* createNode(int number);
+Node* insertNode(Node* root, int number);
+int replace(Node* root);
+
+Node* createNode(int number)
+{
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    if (!newNode) {
+        printf("Error in memory allocation!");
+        exit(1);
+    }
+    newNode->number = number;
+    newNode->left = NULL;
+    newNode->right = NULL;
+    return newNode;
+}
+
+Node* insertNode(Node* root, int number)
+{
+    if (root == NULL) return createNode(number);
+
+    if (number <= root->number) { 
+        root->left = insertNode(root->left, number);
+    }
+    else {
+        root->right = insertNode(root->right, number);
+    }
+
+    return root;
+}
+
+int replace(Node* root)
+{
+    if (root == NULL) return 0; 
+    int leftSum = replace(root->left);
+    int rightSum = replace(root->right);
+    
+    int currentData = root->number;
+
+    root->number = leftSum + rightSum;
+
+    return currentData + root->number;
+}
+
+void inorder(Node* root, FILE* file) {
+    if (root != NULL) {
+        inorder(root->left, file);
+        fprintf(file, "%d ", root->number);
+        inorder(root->right, file);
+    }
+}
+
+int main()
+{
+    Node* root = NULL;
+    int numEl, randomNum;
+
+    printf("Unesite broj elemenata stabla:");
+    scanf("%d", &numEl);
+
+    srand(time(NULL));
+
+    printf("Randomly generated numbers:\n");
+
+    for (int i = 0; i < numEl; i++) {
+        randomNum = rand() % 81 + 10;
+        printf("%d ", randomNum);
+        root = insertNode(root, randomNum);
+    }
+    printf("\n");
+
+    FILE* fileBefore = fopen("stablo_prije.txt", "w");
+    if (fileBefore == NULL) {
+        printf("Greska u otvaranju datoteke!\n");
+        return 1;
+    }
+    fprintf(fileBefore, "Inorder ispis:\n");
+    inorder(root, fileBefore);
+    fclose(fileBefore);
+
+    replace(root);
+
+    FILE* fileAfter = fopen("stablo_poslije.txt", "w");
+    if (fileAfter == NULL) {
+        printf("Greska u otvaranju datoteke!\n");
+        return 1;
+    }
+    fprintf(fileAfter, "Inorder ispis:\n");
+    inorder(root, fileAfter);
+    fclose(fileAfter);
+
+    return 0;
+}
